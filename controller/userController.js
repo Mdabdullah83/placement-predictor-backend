@@ -3,7 +3,7 @@ const { validationResult } = require("express-validator");
 const httpStatusCode = require("../constant/httpStatusCode");
 const UserModel = require("../models/userModel");
 const AdminModel = require("../models/adminModel");
-const TeacherModel = require("../models/teacherModel");
+
 const { getToken } = require("../middleware/authMiddleware");
 const { SendEmail } = require("../services/emailServices");
 
@@ -17,13 +17,20 @@ const registerUser = async (req, res) => {
       });
     }
 
-    const { username, email, password } = req.body;
+    const { username, email, password,role } = req.body;
 
     // Check if user already exists
-    const existingUser = await UserModel.findOne({ email });
-    const existingTeacher = await TeacherModel.findOne({ email });
+    let existingUser;
+    if(role === "user"){
+    existingUser = await UserModel.findOne({ email });
+    }
+    else if(role === "admin"){
+      existingUser = await AdminModel.findOne({ email });
+    }
 
-    if (existingUser || existingTeacher) {
+
+    if (existingUser) {
+      
       return res.status(httpStatusCode.CONFLICT).json({
         success: false,
         message:
@@ -33,11 +40,25 @@ const registerUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    let newUser = await UserModel.create({
-      username,
-      email,
-      password: hashedPassword,
-    });
+    let newUser;
+    console.log("user:",role,username,email,password);
+
+    if(role === "user"){
+      newUser = await UserModel.create({
+        username,
+        email,
+        password: hashedPassword,
+        role: "user",
+      });
+    }
+    else if(role === "admin"){
+      newUser = await AdminModel.create({
+        username,
+        email,
+        password: hashedPassword,
+        role: "admin",
+      });
+    }
 
     // Send a congratulatory email to the user
     SendEmail(email, newUser.username);
@@ -72,10 +93,13 @@ const loginUser = async (req, res) => {
     let user = await UserModel.findOne({ email });
    
     if (!user) {
-      return res.status(httpStatusCode.UNAUTHORIZED).json({
-        success: false,
-        message: "Invalid email or user not registered!",
-      });
+      user = await AdminModel.findOne({ email });
+      if(!user){ 
+        return res.status(httpStatusCode.UNAUTHORIZED).json({
+          success: false,
+          message: "Invalid email or user not registered!",
+        });
+      }
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
