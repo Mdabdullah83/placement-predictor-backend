@@ -1,3 +1,4 @@
+const httpStatusCode = require("../constant/httpStatusCode");
 const Quiz = require("../models/quizModel");
 const { generateQuiz } = require("../services/gemini");
 
@@ -115,8 +116,18 @@ Return ONLY the JSON object, no additional text or formatting.`;
 // @access  Private
 const getQuizzes = async (req, res) => {
   try {
-    const quizzes = await Quiz.find({ createdBy: req.user._id });
-    res.json(quizzes);
+    const quizzes = await Quiz.find();
+    if (!quizzes) {
+      return res.status(httpStatusCode.BAD_REQUEST).json({
+        success: false,
+        message: "quizzes not found",
+      });
+    }
+    return res.status(httpStatusCode.OK).json({
+      success: true,
+      message: "QUizzes found successfully",
+      data: quizzes,
+    });
   } catch (error) {
     console.error("Error fetching quizzes:", error);
     res.status(500).json({
