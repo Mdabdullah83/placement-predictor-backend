@@ -17,20 +17,18 @@ const registerUser = async (req, res) => {
       });
     }
 
-    const { username, email, password,role } = req.body;
+    const { username, email, password, role, department, year, university } =
+      req.body;
 
     // Check if user already exists
     let existingUser;
-    if(role === "user"){
-    existingUser = await UserModel.findOne({ email });
-    }
-    else if(role === "admin"){
+    if (role === "user") {
+      existingUser = await UserModel.findOne({ email });
+    } else if (role === "admin") {
       existingUser = await AdminModel.findOne({ email });
     }
 
-
     if (existingUser) {
-      
       return res.status(httpStatusCode.CONFLICT).json({
         success: false,
         message:
@@ -41,17 +39,19 @@ const registerUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     let newUser;
-    console.log("user:",role,username,email,password);
+    console.log("user:", role, username, email, password);
 
-    if(role === "user"){
+    if (role === "user") {
       newUser = await UserModel.create({
         username,
         email,
         password: hashedPassword,
         role: "user",
+        department,
+        year,
+        university,
       });
-    }
-    else if(role === "admin"){
+    } else if (role === "admin") {
       newUser = await AdminModel.create({
         username,
         email,
@@ -61,7 +61,7 @@ const registerUser = async (req, res) => {
     }
 
     // Send a congratulatory email to the user
-    SendEmail(email, newUser.username);
+    // SendEmail(email, newUser.username);
     return res.status(httpStatusCode.CREATED).json({
       success: true,
       message: "User registered successfully!",
@@ -91,10 +91,10 @@ const loginUser = async (req, res) => {
 
     // Check if user exists in any of the relevant collections
     let user = await UserModel.findOne({ email });
-   
+
     if (!user) {
       user = await AdminModel.findOne({ email });
-      if(!user){ 
+      if (!user) {
         return res.status(httpStatusCode.UNAUTHORIZED).json({
           success: false,
           message: "Invalid email or user not registered!",
